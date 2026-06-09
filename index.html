@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>РЕММА B2B Заказы</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link id="pwa-manifest" rel="manifest" href="">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://placehold.co/512x512/0f172a/ffffff?text=REMMA">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        remma: {
+                            graphite: '#1e293b',
+                            dark: '#0f172a',
+                            accent: '#059669',
+                            accentHover: '#047857',
+                            error: '#dc2626'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { 
+            -webkit-tap-highlight-color: transparent; 
+            padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+        }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes pop { 0% { transform: scale(0.9); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        
+        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+        .animate-slide-up { animation: slideUp 0.4s ease-out; }
+        .animate-pop { animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
+        
+        .custom-tooltip {
+            position: absolute;
+            bottom: 105%;
+            left: 50%;
+            transform: translateX(-50%) scale(0.95);
+            background-color: #0f172a;
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 400;
+            line-height: 1.4;
+            width: 200px;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s ease;
+        }
+        .desc-container:hover .custom-tooltip,
+        .desc-container.active .custom-tooltip {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) scale(1);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen">
+
+    <div id="auth-screen" class="min-h-[100dvh] flex flex-col justify-center items-center p-6 bg-remma-dark animate-fade-in">
+        <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 animate-slide-up flex flex-col items-center">
+            <div class="text-center mb-6 w-full flex flex-col items-center">
+                <img src="https://drive.google.com/thumbnail?id=1iiAGQjBgF339kw4M8AZNXWnJYThb5p1U&sz=w800" class="h-32 w-auto object-contain mb-3 drop-shadow-sm" alt="Logo">
+                <p class="text-slate-500 text-sm leading-relaxed">Дистрибьютор премиальных деликатесов<br>и сыров из Швейцарии</p>
+            </div>
+            
+            <div id="login-form" class="w-full">
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Телефон или ИНН</label>
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="login-input" placeholder="Введите телефон или ИНН" 
+                           onkeydown="if(event.key === 'Enter') window.RemmaApp.login()"
+                           class="w-full h-12 px-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-remma-dark focus:border-remma-dark outline-none text-[16px] transition-all">
+                </div>
+                <button type="button" onclick="window.RemmaApp.login()" id="btn-login" class="w-full h-12 bg-remma-dark text-white font-semibold rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 text-[16px]">
+                    Войти
+                </button>
+                <div class="mt-6 text-center">
+                    <button type="button" onclick="window.RemmaApp.toggleAuth('register')" class="text-remma-accent hover:text-remma-accentHover font-medium text-sm transition-colors p-2">
+                        Нет аккаунта? Стать клиентом
+                    </button>
+                </div>
+            </div>
+
+            <div id="register-form" class="hidden w-full">
+                <div class="mb-4">
+                    <input type="text" id="reg-company" placeholder="Название компании/ИП" class="w-full h-12 px-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-remma-dark outline-none text-[16px]">
+                </div>
+                <div class="mb-4">
+                    <input type="text" id="reg-name" placeholder="Контактное лицо" class="w-full h-12 px-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-remma-dark outline-none text-[16px]">
+                </div>
+                <div class="mb-4">
+                    <input type="tel" inputmode="numeric" pattern="[0-9]*" id="reg-phone" placeholder="Телефон" class="w-full h-12 px-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-remma-dark outline-none text-[16px]">
+                </div>
+                <div class="mb-5">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="reg-inn" placeholder="ИНН" class="w-full h-12 px-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-remma-dark outline-none text-[16px]">
+                </div>
+                <button type="button" onclick="window.RemmaApp.register()" id="btn-register" class="w-full h-12 bg-remma-accent text-white font-semibold rounded-xl hover:bg-remma-accentHover transition-colors shadow-lg shadow-emerald-600/30 text-[16px]">
+                    Оставить заявку
+                </button>
+                <div class="mt-6 text-center">
+                    <button type="button" onclick="window.RemmaApp.toggleAuth('login')" class="text-slate-500 hover:text-slate-800 font-medium text-sm transition-colors p-2">
+                        Вернуться ко входу
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-screen" class="hidden animate-fade-in">
+        <header class="bg-white shadow-sm sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <img src="https://drive.google.com/thumbnail?id=1iiAGQjBgF339kw4M8AZNXWnJYThb5p1U&sz=w800" class="h-14 w-auto object-contain" alt="Logo">
+                    <div class="border-l border-slate-200 pl-3">
+                        <p id="user-greeting" class="text-sm text-slate-800 font-bold truncate max-w-[150px] sm:max-w-xs"></p>
+                    </div>
+                </div>
+                <button type="button" onclick="window.RemmaApp.skipDeliveryConfirm(event)" class="text-xs border border-slate-300 text-slate-600 px-3 py-2 rounded-lg font-medium hover:bg-slate-50 transition-colors">
+                    Пропуск
+                </button>
+            </div>
+            <div class="border-t border-slate-100">
+                <div id="category-nav" class="flex overflow-x-auto hide-scroll gap-2 px-4 py-3 max-w-7xl mx-auto"></div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 py-6">
+            <div id="loading-catalog" class="text-center py-10 hidden">
+                <svg class="animate-spin h-8 w-8 text-remma-accent mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <p class="text-slate-500 text-sm">Загрузка ассортимента...</p>
+            </div>
+            <div id="product-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-6"></div>
+        </main>
+        
+        <div class="fixed bottom-4 left-4 right-4 z-40 pointer-events-none mb-[env(safe-area-inset-bottom,0px)]">
+            <div class="max-w-7xl mx-auto flex justify-end pointer-events-auto">
+                <button type="button" onclick="window.RemmaApp.openCart()" id="floating-cart" class="hidden bg-remma-dark text-white rounded-2xl shadow-xl p-4 flex items-center gap-4 hover:bg-slate-800 transition-transform active:scale-95 animate-pop w-full sm:w-auto sm:min-w-[300px]">
+                    <div class="relative">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 0a2 2 0 100 4 2 2 0 000-4z"></path></svg>
+                        <span id="cart-badge" class="absolute -top-2 -right-2 bg-remma-accent text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-remma-dark">0</span>
+                    </div>
+                    <div class="flex-1 text-left">
+                        <div class="text-xs text-slate-300 font-medium">Оформить заказ</div>
+                        <div id="cart-total-float" class="font-bold text-lg leading-none mt-1">0 ₽</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cart-modal" class="fixed inset-0 bg-slate-900/60 z-50 hidden opacity-0 transition-opacity backdrop-blur-sm">
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl h-[85vh] sm:h-auto sm:max-h-[85vh] sm:rounded-2xl sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-2xl flex flex-col transform translate-y-full transition-transform duration-300" id="cart-modal-content">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-3xl sm:rounded-t-2xl">
+                <h3 class="text-xl font-bold text-remma-dark">Ваш заказ</h3>
+                <button type="button" onclick="window.RemmaApp.closeCart()" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="cart-items" class="p-5 overflow-y-auto flex-1 bg-slate-50 space-y-3"></div>
+            <div class="p-5 border-t border-slate-100 bg-white rounded-b-3xl sm:rounded-b-2xl pb-calc">
+                <div class="mb-4">
+                    <input type="text" id="order-comment" placeholder="Комментарий к заказу (необязательно)" class="w-full h-11 px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-remma-dark outline-none text-[16px]">
+                </div>
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-slate-500 font-medium">Итого:</span>
+                    <span id="cart-total-final" class="text-2xl font-bold text-remma-dark">0 ₽</span>
+                </div>
+                <button type="button" onclick="window.RemmaApp.submitOrder()" id="btn-submit-order" class="w-full bg-remma-accent text-white font-bold py-4 rounded-xl hover:bg-remma-accentHover transition-colors shadow-lg shadow-emerald-600/30 text-[16px] flex justify-center items-center">
+                    Отправить заказ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="success-screen" class="fixed inset-0 bg-remma-dark z-50 hidden flex flex-col justify-center items-center p-6 text-center">
+        <div class="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mb-6 animate-pop shadow-[0_0_50px_rgba(34,197,94,0.4)]">
+            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+        </div>
+        <h2 id="success-title" class="text-3xl font-bold text-white mb-2 animate-slide-up">Заказ принят!</h2>
+        <p id="success-text" class="text-slate-400 mb-8 max-w-sm animate-slide-up" style="animation-delay: 0.1s;">Менеджер свяжется с вами в ближайшее время.</p>
+        <button type="button" onclick="window.RemmaApp.resetAndGoHome()" class="px-8 py-3 bg-white text-remma-dark font-semibold rounded-xl hover:bg-slate-100 transition-colors animate-slide-up text-[16px]" style="animation-delay: 0.2s;">
+            Вернуться в каталог
+        </button>
+    </div>
+
+    <div id="toast-container" class="fixed top-4 right-4 left-4 z-[100] flex flex-col gap-2 pointer-events-none sm:left-auto sm:w-80"></div>
+
+    <script>
+        // ВСТАВЬ СЮДА ССЫЛКУ ИЗ ШАГА 2
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbx4gNd3Qvb5JGue6OqYm53ILG53x33_liKrOL0He6KAIhu81zAIccwO5Nf4U-0XFnA/exec'; 
+
+        function apiCall(action, payload, onSuccess, onError) {
+            fetch(GAS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: action, data: payload })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data && data.error) throw new Error(data.error);
+                if(onSuccess) onSuccess(data);
+            })
+            .catch(err => {
+                console.error('API Error:', err);
+                if(onError) onError(err);
+            });
+        }
+
+        window.RemmaApp = {
+            clientName: null,
+            authInput: null,
+            catalog: [],
+            categories: [],
+            currentCategory: 'Все',
+            cart: {}, 
+            
+            showToast: function(msg, type) {
+                if(!type) type = 'info';
+                var container = document.getElementById('toast-container');
+                var toast = document.createElement('div');
+                var bg = type === 'error' ? 'bg-remma-error' : (type === 'success' ? 'bg-green-600' : 'bg-slate-800');
+                toast.className = bg + ' text-white px-4 py-3 rounded-xl shadow-lg animate-slide-up text-sm font-medium flex items-center justify-between pointer-events-auto';
+                toast.innerHTML = '<span>' + msg + '</span>';
+                container.appendChild(toast);
+                setTimeout(function() {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateY(-20px)';
+                    toast.style.transition = 'all 0.3s ease';
+                    setTimeout(function() { toast.remove(); }, 300);
+                }, 3000);
+            },
+            
+            formatPrice: function(num) {
+                return new Intl.NumberFormat('ru-RU').format(num) + ' ₽';
+            },
+
+            toggleScreen: function(screenId) {
+                var screens = ['auth-screen', 'main-screen', 'success-screen'];
+                for (var i = 0; i < screens.length; i++) {
+                    document.getElementById(screens[i]).classList.add('hidden');
+                }
+                document.getElementById(screenId).classList.remove('hidden');
+            },
+
+            toggleAuth: function(mode) {
+                if (mode === 'register') {
+                    document.getElementById('login-form').classList.add('hidden');
+                    document.getElementById('register-form').classList.remove('hidden');
+                } else {
+                    document.getElementById('register-form').classList.add('hidden');
+                    document.getElementById('login-form').classList.remove('hidden');
+                }
+            },
+
+            login: function() {
+                var input = document.getElementById('login-input').value.trim();
+                if (!input) return window.RemmaApp.showToast('Введите телефон или ИНН', 'error');
+                
+                var btn = document.getElementById('btn-login');
+                var origText = btn.innerText;
+                btn.innerText = 'Загрузка...'; btn.disabled = true;
+
+                apiCall('authenticateUser', input, 
+                    function(res) {
+                        btn.innerText = origText; btn.disabled = false;
+                        if (res && res.success) {
+                            window.RemmaApp.clientName = res.clientName;
+                            window.RemmaApp.authInput = input;
+                            window.RemmaApp.initMainScreen();
+                        } else {
+                            window.RemmaApp.showToast('Клиент не найден или отключен', 'error');
+                        }
+                    },
+                    function(err) {
+                        btn.innerText = origText; btn.disabled = false;
+                        window.RemmaApp.showToast('Ошибка подключения к серверу', 'error');
+                    }
+                );
+            },
+
+            register: function() {
+                var data = {
+                    company: document.getElementById('reg-company').value.trim(),
+                    name: document.getElementById('reg-name').value.trim(),
+                    phone: document.getElementById('reg-phone').value.trim(),
+                    inn: document.getElementById('reg-inn').value.trim()
+                };
+                
+                if (!data.company || !data.phone) return window.RemmaApp.showToast('Название и телефон обязательны', 'error');
+
+                var btn = document.getElementById('btn-register');
+                var origText = btn.innerText;
+                btn.innerText = 'Отправка...'; btn.disabled = true;
+
+                apiCall('registerNewClient', data, 
+                    function(res) {
+                        btn.innerText = origText; btn.disabled = false;
+                        window.RemmaApp.showToast('Заявка отправлена! Ожидайте модерации.', 'success');
+                        window.RemmaApp.toggleAuth('login');
+                        document.getElementById('login-input').value = data.phone;
+                    },
+                    function(err) {
+                        btn.innerText = origText; btn.disabled = false;
+                        window.RemmaApp.showToast('Ошибка подключения к серверу', 'error');
+                    }
+                );
+            },
+
+            initMainScreen: function() {
+                window.RemmaApp.toggleScreen('main-screen');
+                document.getElementById('user-greeting').innerText = "Здравствуйте,\n" + window.RemmaApp.clientName + "!";
+                document.getElementById('loading-catalog').classList.remove('hidden');
+                document.getElementById('product-grid').innerHTML = '';
+                
+                apiCall('getAssortment', null,
+                    function(products) {
+                        document.getElementById('loading-catalog').classList.add('hidden');
+                        window.RemmaApp.catalog = products || [];
+                        
+                        var catsMap = {};
+                        for (var i = 0; i < window.RemmaApp.catalog.length; i++) {
+                            if(window.RemmaApp.catalog[i].category) catsMap[window.RemmaApp.catalog[i].category] = true;
+                        }
+                        window.RemmaApp.categories = ['Все'];
+                        for (var cat in catsMap) window.RemmaApp.categories.push(cat);
+                        
+                        window.RemmaApp.renderCategories();
+                        window.RemmaApp.renderCatalog();
+                    },
+                    function(err) {
+                        document.getElementById('loading-catalog').classList.add('hidden');
+                        window.RemmaApp.showToast('Ошибка загрузки каталога', 'error');
+                    }
+                );
+            },
+
+            renderCategories: function() {
+                var nav = document.getElementById('category-nav');
+                var html = '';
+                for (var i = 0; i < window.RemmaApp.categories.length; i++) {
+                    var cat = window.RemmaApp.categories[i];
+                    var isActive = window.RemmaApp.currentCategory === cat;
+                    var classes = isActive ? 'bg-remma-dark text-white border-remma-dark' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50';
+                    html += '<button type="button" onclick="window.RemmaApp.setCategory(\'' + cat + '\')" class="whitespace-nowrap h-10 px-4 rounded-xl text-sm font-medium transition-colors border ' + classes + '">' + cat + '</button>';
+                }
+                nav.innerHTML = html;
+            },
+
+            setCategory: function(cat) {
+                window.RemmaApp.currentCategory = cat;
+                window.RemmaApp.renderCategories();
+                window.RemmaApp.renderCatalog();
+            },
+
+            renderCatalog: function() {
+                var grid = document.getElementById('product-grid');
+                var html = '';
+                
+                for (var i = 0; i < window.RemmaApp.catalog.length; i++) {
+                    var prod = window.RemmaApp.catalog[i];
+                    if (window.RemmaApp.currentCategory !== 'Все' && prod.category !== window.RemmaApp.currentCategory) continue;
+                    
+                    var currentQty = window.RemmaApp.cart[prod.sku] ? window.RemmaApp.cart[prod.sku].qty : -1;
+                    var imgUrl = prod.img || 'https://placehold.co/400x300/f8fafc/94a3b8?text=REMMA';
+                    
+                    var priceHtml = prod.promoPrice > 0 
+                        ? '<div class="text-xs text-slate-400 line-through">' + prod.price + ' ₽</div><div class="text-lg font-bold text-remma-accent leading-none">' + prod.promoPrice + ' ₽</div>'
+                        : '<div class="text-lg font-bold text-remma-dark leading-none">' + prod.price + ' ₽</div>';
+
+                    var markerHtml = prod.badge ? '<div class="absolute top-2 left-2 bg-remma-accent text-white text-[10px] font-bold px-2 py-1 rounded-lg uppercase tracking-wider z-10 shadow-sm">' + prod.badge + '</div>' : '';
+
+                    var controlsHtml = currentQty >= 0
+                        ? '<div class="flex items-center justify-between w-full bg-slate-100 rounded-xl p-1 h-11 border border-slate-200">' +
+                          '<button type="button" onclick="window.RemmaApp.updateCart(\'' + prod.sku + '\', -1)" class="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-white rounded-lg transition-colors font-bold text-xl">-</button>' +
+                          '<input type="number" inputmode="numeric" pattern="[0-9]*" value="' + currentQty + '" onfocus="if(this.value==\'0\')this.value=\'\'" onblur="if(this.value==\'\')this.value=\'0\'" onchange="window.RemmaApp.setCartInput(\'' + prod.sku + '\', this.value)" class="w-12 text-center bg-transparent font-bold text-remma-dark outline-none p-0 border-0 focus:ring-0 text-[16px]">' +
+                          '<button type="button" onclick="window.RemmaApp.updateCart(\'' + prod.sku + '\', 1)" class="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-white rounded-lg transition-colors font-bold text-xl">+</button></div>'
+                        : '<button type="button" onclick="window.RemmaApp.updateCart(\'' + prod.sku + '\', 1)" class="w-full h-11 bg-white border-2 border-slate-200 text-remma-dark font-semibold rounded-xl hover:border-remma-dark hover:bg-slate-50 transition-colors flex justify-center items-center gap-2 text-[16px]"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>В корзину</button>';
+
+                    html += '<div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-100 flex flex-col relative group hover:shadow-md transition-shadow">' + markerHtml +
+                            '<div class="aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 mb-3 p-1 flex items-center justify-center"><img src="' + imgUrl + '" alt="Product" class="w-full h-full object-contain group-hover:scale-[1.6] transition-transform duration-500"></div>' +
+                            '<div class="flex-1 flex flex-col relative">' +
+                                '<div class="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-1">' + (prod.category || '') + '</div>' +
+                                '<h3 class="text-sm font-bold text-slate-800 leading-tight mb-1 line-clamp-2">' + prod.name + '</h3>' +
+                                '<div class="desc-container cursor-pointer mb-3 flex-1 relative" onclick="this.classList.toggle(\'active\')">' +
+                                    '<p class="text-[11px] text-slate-500 line-clamp-2 pointer-events-none">' + prod.desc + '</p>' +
+                                    '<div class="custom-tooltip">' + prod.desc + '</div>' +
+                                '</div>' +
+                                '<div class="flex items-end justify-between mb-3 min-h-[36px]"><div>' + priceHtml + '</div><div class="text-[10px] text-slate-400 text-right">за ' + prod.unit + '</div></div>' +
+                                '<div class="mt-auto">' + controlsHtml + '</div>' +
+                            '</div></div>';
+                }
+                grid.innerHTML = html;
+            },
+
+            updateCart: function(sku, change) {
+                var product = null;
+                for(var i=0; i<window.RemmaApp.catalog.length; i++) {
+                    if(window.RemmaApp.catalog[i].sku === sku) { product = window.RemmaApp.catalog[i]; break; }
+                }
+                if (!product) return;
+
+                if (!window.RemmaApp.cart[sku]) {
+                    window.RemmaApp.cart[sku] = { product: product, qty: 0 };
+                    window.RemmaApp.renderCatalog();
+                    window.RemmaApp.updateCartFloatingBtn();
+                    return;
+                }
+                
+                var newQty = window.RemmaApp.cart[sku].qty + change;
+                if (newQty < 0) {
+                    delete window.RemmaApp.cart[sku];
+                } else {
+                    window.RemmaApp.cart[sku].qty = newQty;
+                }
+                
+                window.RemmaApp.renderCatalog();
+                window.RemmaApp.updateCartFloatingBtn();
+                if(!document.getElementById('cart-modal').classList.contains('hidden')) {
+                    window.RemmaApp.renderCartModal();
+                }
+            },
+
+            setCartInput: function(sku, val) {
+                var qty = parseInt(val);
+                if (isNaN(qty) || qty < 0) return window.RemmaApp.renderCatalog();
+                
+                var product = null;
+                for(var i=0; i<window.RemmaApp.catalog.length; i++) {
+                    if(window.RemmaApp.catalog[i].sku === sku) { product = window.RemmaApp.catalog[i]; break; }
+                }
+                if (product) {
+                    window.RemmaApp.cart[sku] = { product: product, qty: qty };
+                }
+                
+                window.RemmaApp.renderCatalog();
+                window.RemmaApp.updateCartFloatingBtn();
+                if(!document.getElementById('cart-modal').classList.contains('hidden')) {
+                    window.RemmaApp.renderCartModal();
+                }
+            },
+
+            removeFromCart: function(sku) {
+                delete window.RemmaApp.cart[sku];
+                window.RemmaApp.renderCatalog();
+                window.RemmaApp.updateCartFloatingBtn();
+                if(!document.getElementById('cart-modal').classList.contains('hidden')) {
+                    window.RemmaApp.renderCartModal();
+                }
+            },
+
+            getCartTotal: function() {
+                var sum = 0;
+                var count = 0;
+                var validItemsCount = 0;
+                for (var key in window.RemmaApp.cart) {
+                    var item = window.RemmaApp.cart[key];
+                    if (item.qty > 0) {
+                        var price = item.product.promoPrice > 0 ? item.product.promoPrice : item.product.price;
+                        sum += price * item.qty;
+                        validItemsCount += item.qty;
+                    }
+                    count++;
+                }
+                return { sum: sum, count: count, validCount: validItemsCount };
+            },
+
+            updateCartFloatingBtn: function() {
+                var btn = document.getElementById('floating-cart');
+                var badge = document.getElementById('cart-badge');
+                var totalFloat = document.getElementById('cart-total-float');
+                
+                var totals = window.RemmaApp.getCartTotal();
+                
+                if (totals.count > 0) {
+                    btn.classList.remove('hidden');
+                    badge.innerText = totals.validCount;
+                    totalFloat.innerText = window.RemmaApp.formatPrice(totals.sum);
+                } else {
+                    btn.classList.add('hidden');
+                    window.RemmaApp.closeCart();
+                }
+            },
+
+            openCart: function() {
+                window.RemmaApp.renderCartModal();
+                var modal = document.getElementById('cart-modal');
+                var content = document.getElementById('cart-modal-content');
+                
+                modal.classList.remove('hidden');
+                void modal.offsetWidth;
+                modal.classList.remove('opacity-0');
+                content.classList.remove('translate-y-full');
+            },
+
+            closeCart: function() {
+                var modal = document.getElementById('cart-modal');
+                var content = document.getElementById('cart-modal-content');
+                
+                modal.classList.add('opacity-0');
+                content.classList.add('translate-y-full');
+                setTimeout(function() { modal.classList.add('hidden'); }, 300);
+            },
+
+            renderCartModal: function() {
+                var container = document.getElementById('cart-items');
+                var totals = window.RemmaApp.getCartTotal();
+                
+                if (totals.count === 0) {
+                    window.RemmaApp.closeCart();
+                    return;
+                }
+
+                var html = '';
+                for (var key in window.RemmaApp.cart) {
+                    var item = window.RemmaApp.cart[key];
+                    var p = item.product;
+                    var price = p.promoPrice > 0 ? p.promoPrice : p.price;
+                    var subtotal = price * item.qty;
+                    var imgUrl = p.img || 'https://placehold.co/100x100/f8fafc/94a3b8?text=R';
+
+                    html += '<div class="bg-white p-3 rounded-xl flex gap-3 items-center border border-slate-100 shadow-sm">' +
+                                '<img src="' + imgUrl + '" class="w-16 h-16 rounded-lg object-contain p-1 bg-slate-50">' +
+                                '<div class="flex-1">' +
+                                    '<h4 class="text-sm font-bold text-slate-800 leading-tight">' + p.name + '</h4>' +
+                                    '<div class="text-xs text-slate-500 mt-1">' + window.RemmaApp.formatPrice(price) + ' / ' + p.unit + '</div>' +
+                                    '<div class="font-bold text-remma-dark text-sm mt-1">' + window.RemmaApp.formatPrice(subtotal) + '</div>' +
+                                '</div>' +
+                                '<div class="flex items-center gap-2">' +
+                                    '<div class="flex flex-col items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">' +
+                                        '<button type="button" onclick="window.RemmaApp.updateCart(\'' + p.sku + '\', 1)" class="w-8 h-6 flex items-center justify-center text-slate-600 hover:bg-white rounded transition-colors font-bold">+</button>' +
+                                        '<span class="text-xs font-bold w-8 text-center">' + item.qty + '</span>' +
+                                        '<button type="button" onclick="window.RemmaApp.updateCart(\'' + p.sku + '\', -1)" class="w-8 h-6 flex items-center justify-center text-slate-600 hover:bg-white rounded transition-colors font-bold">-</button>' +
+                                    '</div>' +
+                                    '<button type="button" onclick="window.RemmaApp.removeFromCart(\'' + p.sku + '\')" class="w-8 h-full min-h-[64px] flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Удалить">' +
+                                        '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>' +
+                                    '</button>' +
+                                '</div>' +
+                            '</div>';
+                }
+                container.innerHTML = html;
+                document.getElementById('cart-total-final').innerText = window.RemmaApp.formatPrice(totals.sum);
+            },
+
+            submitOrder: function() {
+                var totals = window.RemmaApp.getCartTotal();
+                if (totals.validCount === 0) return window.RemmaApp.showToast('В корзине нет товаров с количеством больше 0', 'error');
+
+                var btn = document.getElementById('btn-submit-order');
+                var comment = document.getElementById('order-comment').value.trim();
+
+                var itemsObj = {};
+                for (var key in window.RemmaApp.cart) {
+                    var i = window.RemmaApp.cart[key];
+                    if (i.qty > 0) {
+                        var price = i.product.promoPrice > 0 ? i.product.promoPrice : i.product.price;
+                        itemsObj[i.product.sku] = {
+                            name: i.product.name, qty: i.qty, unit: i.product.unit, sum: price * i.qty
+                        };
+                    }
+                }
+
+                var payload = {
+                    clientName: window.RemmaApp.clientName, authInput: window.RemmaApp.authInput,
+                    decision: 'yes', items: itemsObj, totalSum: totals.sum, comment: comment
+                };
+
+                var origText = btn.innerText;
+                btn.innerHTML = 'Отправка...'; btn.disabled = true;
+
+                apiCall('processOrder', payload,
+                    function(res) {
+                        btn.innerText = origText; btn.disabled = false;
+                        window.RemmaApp.closeCart();
+                        window.RemmaApp.cart = {};
+                        window.RemmaApp.updateCartFloatingBtn();
+                        window.RemmaApp.renderCatalog();
+                        document.getElementById('order-comment').value = '';
+                        
+                        document.getElementById('success-title').innerText = "Заказ принят!";
+                        document.getElementById('success-text').innerText = "Менеджер свяжется с вами в ближайшее время.";
+                        window.RemmaApp.toggleScreen('success-screen');
+                    },
+                    function(err) {
+                        btn.innerText = origText; btn.disabled = false;
+                        window.RemmaApp.showToast('Ошибка отправки заказа', 'error');
+                    }
+                );
+            },
+
+            skipDeliveryConfirm: function(event) {
+                var btn = event.currentTarget;
+                if(btn.dataset.confirm === "true") {
+                    btn.innerText = "Отправка...";
+                    
+                    var payload = {
+                        clientName: window.RemmaApp.clientName, authInput: window.RemmaApp.authInput,
+                        decision: 'no', items: {}, totalSum: 0, comment: 'Пропуск поставки'
+                    };
+
+                    apiCall('processOrder', payload,
+                        function(res) {
+                            document.getElementById('success-title').innerText = "Поставка пропущена";
+                            document.getElementById('success-text').innerText = "Будем ждать вас на следующей неделе!";
+                            window.RemmaApp.toggleScreen('success-screen');
+                            
+                            btn.innerText = "Пропущено"; btn.dataset.confirm = "false";
+                            btn.classList.add('bg-slate-200', 'text-slate-400', 'pointer-events-none');
+                        },
+                        function(err) {
+                            btn.innerText = "Ошибка";
+                            window.RemmaApp.showToast('Ошибка подключения к серверу', 'error');
+                        }
+                    );
+                } else {
+                    btn.dataset.confirm = "true";
+                    btn.innerText = "Точно пропустить?";
+                    btn.classList.add('text-remma-error', 'border-remma-error');
+                    setTimeout(function() {
+                        if (btn.innerText === "Отправка..." || btn.innerText === "Пропущено") return;
+                        btn.dataset.confirm = "false"; btn.innerText = "Пропуск";
+                        btn.classList.remove('text-remma-error', 'border-remma-error');
+                    }, 3000);
+                }
+            },
+
+            resetAndGoHome: function() {
+                window.RemmaApp.toggleScreen('main-screen');
+                window.scrollTo(0,0);
+            }
+        };
+
+        try {
+            var manifest = {
+                "name": "РЕММА B2B", "short_name": "РЕММА", "description": "Портал заказов",
+                "start_url": "./", "display": "standalone", "background_color": "#f8fafc", "theme_color": "#0f172a",
+                "icons": [{"src": "https://placehold.co/512x512/0f172a/ffffff?text=REMMA", "sizes": "512x512", "type": "image/png"}]
+            };
+            var blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+            document.getElementById('pwa-manifest').href = URL.createObjectURL(blob);
+        } catch(e) {}
+    </script>
+</body>
+</html>

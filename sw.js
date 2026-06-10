@@ -1,7 +1,12 @@
 self.addEventListener('install', (e) => {
   console.log('[Service Worker] Установлен');
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (e) => {
+  console.log('[Service Worker] Активирован');
 });
 
 self.addEventListener('fetch', (e) => {
-  // Оставляем пустым, чтобы пропускать все сетевые запросы напрямую
+  // Пропускаем все запросы напрямую в сеть
 });

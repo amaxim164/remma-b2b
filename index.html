@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <link id="pwa-manifest" rel="manifest" href="">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -653,15 +653,15 @@
             }
         };
 
-        try {
-            var manifest = {
-                "name": "РЕММА B2B", "short_name": "РЕММА", "description": "Портал заказов",
-                "start_url": "./", "display": "standalone", "background_color": "#f8fafc", "theme_color": "#0f172a",
-                "icons": [{"src": "https://placehold.co/512x512/0f172a/ffffff?text=REMMA", "sizes": "512x512", "type": "image/png"}]
-            };
-            var blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-            document.getElementById('pwa-manifest').href = URL.createObjectURL(blob);
-        } catch(e) {}
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./sw.js').then(function(registration) {
+                    console.log('ServiceWorker успешно зарегистрирован');
+                }, function(err) {
+                    console.log('Ошибка регистрации ServiceWorker: ', err);
+                });
+            });
+        }
     </script>
 </body>
 </html>
